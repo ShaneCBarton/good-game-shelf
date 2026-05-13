@@ -75,7 +75,7 @@ game-tracker/
 5. Start the server
    ```
    cd server
-   node index.js
+   node --env-file=.env index.js
    ```
 
 6. Start the client (in a separate terminal)
