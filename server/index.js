@@ -1,14 +1,19 @@
 import express from 'express'
 import cors from 'cors'
-import dotenv from 'dotenv'
+import steamRouter from './routes/steam.js'
 
-dotenv.config()
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 const app = express()
 const PORT = process.env.PORT || 3001
 
 app.use(cors())
 app.use(express.json())
+app.use('/api/steam', steamRouter)
 
 //test route
 app.get('/health', (req, res) => {
