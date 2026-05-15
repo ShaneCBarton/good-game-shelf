@@ -1,4 +1,4 @@
-function GameCard({ game }) {
+function GameCard({ game, onClick }) {
   const covers = [
     `https://cdn.akamai.steamstatic.com/steam/apps/${game.appid}/library_600x900.jpg`,
     `https://cdn.akamai.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
@@ -19,7 +19,10 @@ function GameCard({ game }) {
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg overflow-hidden hover:scale-105 transition-transform duration-200">
+    <div
+      onClick={onClick}
+      className="bg-gray-800 rounded-lg overflow-hidden hover:scale-105 transition-transform duration-200 cursor-pointer"
+    >
       <img
         src={covers[0]}
         alt={game.name}

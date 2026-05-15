@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import GameCard from './components/GameCard'
+import GameModal from './components/GameModal'
 import Auth from './components/Auth'
 import supabase from './lib/supabase'
 
@@ -7,6 +8,7 @@ function App() {
   const [games, setGames] = useState([])
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState(null)
+  const [selectedGame, setSelectedGame] = useState(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -27,9 +29,9 @@ function App() {
       .then(data => {
         setGames(data.games || [])
         setLoading(false)
-    })
+      })
   }, [session])
-  
+
   if (!session) return <Auth />
 
   if (loading) return (
@@ -52,11 +54,24 @@ function App() {
           Sign Out
         </button>
       </div>
+
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
         {games.map(game => (
-          <GameCard key={game.appid} game={game} />
+          <GameCard
+            key={game.appid}
+            game={game}
+            onClick={() => setSelectedGame(game)}
+          />
         ))}
       </div>
+
+      {selectedGame && (
+        <GameModal
+          game={selectedGame}
+          session={session}
+          onClose={() => setSelectedGame(null)}
+        />
+      )}
     </div>
   )
 }
