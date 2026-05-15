@@ -117,7 +117,6 @@ function Shelf({ session, onEditGame }) {
             })
 
             const data = await response.json()
-            console.log('Shelf response:', data)
             setShelfItems(Array.isArray(data) ? data : [])
         } catch (err) {
             console.error('Shelf fetch error:', err)

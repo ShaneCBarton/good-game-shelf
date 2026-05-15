@@ -1,6 +1,19 @@
 import { useState, useEffect } from 'react'
 import supabase from '../lib/supabase'
 
+const normalizePlatform = (platforms) => {
+  if (!platforms || platforms.length === 0) return 'unknown'
+  
+  const names = platforms.map(p => p.name.toLowerCase()).join(' ')
+  
+  if (names.includes('playstation')) return 'playstation'
+  if (names.includes('xbox')) return 'xbox'
+  if (names.includes('nintendo') || names.includes('switch') || names.includes('wii')) return 'nintendo'
+  if (names.includes('pc') || names.includes('windows') || names.includes('mac') || names.includes('linux')) return 'steam'
+  
+  return 'unknown'
+}
+
 function IGDBGameModal({ game, onClose, session }) {
   const [status, setStatus] = useState('want_to_play')
   const [rating, setRating] = useState(5)
@@ -48,18 +61,18 @@ function IGDBGameModal({ game, onClose, session }) {
   const handleSave = async () => {
     setLoading(true)
 
-    const { data: gameData, error: gameError } = await supabase
-      .from('games')
-      .upsert({
-        igdb_id: game.id,
-        title: game.name,
-        cover_url: coverUrl,
-        genre: genres,
-        release_year: releaseYear,
-        platform: platforms
-      }, { onConflict: 'igdb_id' })
-      .select('id')
-      .single()
+  const { data: gameData, error: gameError } = await supabase
+    .from('games')
+    .upsert({
+      igdb_id: game.id,
+      title: game.name,
+      cover_url: coverUrl,
+      genre: genres,
+      release_year: releaseYear,
+      platform: normalizePlatform(game.platforms)  // ← changed
+    }, { onConflict: 'igdb_id' })
+    .select('id')
+    .single()
 
     if (gameError) {
       console.error('Game upsert error:', gameError)
