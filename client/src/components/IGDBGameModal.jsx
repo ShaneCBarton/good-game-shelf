@@ -134,7 +134,7 @@ function IGDBGameModal({ game, onClose, session }) {
                     : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
-                {s.replace('_', ' ')}
+                {s.replaceAll('_', ' ')}
               </button>
             ))}
           </div>
