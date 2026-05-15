@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react'
 import GameCard from './components/GameCard'
 import GameModal from './components/GameModal'
+import SearchBar from './components/SearchBar'
+import IGDBGameModal from './components/IGDBGameModal'
 import Auth from './components/Auth'
 import supabase from './lib/supabase'
+
 
 function App() {
   const [games, setGames] = useState([])
   const [loading, setLoading] = useState(true)
   const [session, setSession] = useState(null)
   const [selectedGame, setSelectedGame] = useState(null)
+  const [selectedIGDBGame, setSelectedIGDBGame] = useState(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -42,14 +46,15 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-900 p-8">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-center mb-8 gap-4">
         <div>
           <h1 className="text-white text-4xl font-bold">My Game Shelf</h1>
           <p className="text-gray-400 mt-1">{games.length} games in your library</p>
         </div>
+        <SearchBar onSelectGame={(game) => setSelectedIGDBGame(game)} />
         <button
           onClick={() => supabase.auth.signOut()}
-          className="text-gray-400 hover:text-white text-sm transition-colors"
+          className="text-gray-400 hover:text-white text-sm transition-colors whitespace-nowrap"
         >
           Sign Out
         </button>
@@ -70,6 +75,14 @@ function App() {
           game={selectedGame}
           session={session}
           onClose={() => setSelectedGame(null)}
+        />
+      )}
+
+      {selectedIGDBGame && (
+        <IGDBGameModal
+          game={selectedIGDBGame}
+          session={session}
+          onClose={() => setSelectedIGDBGame(null)}
         />
       )}
     </div>
