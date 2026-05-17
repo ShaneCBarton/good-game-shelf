@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import supabase from '../lib/supabase'
 
 const STATUS_LABELS = {
@@ -23,13 +23,13 @@ function ShelfCard({ item, onClick }) {
   return (
     <div
       onClick={onClick}
-      className="relative bg-gray-800 rounded-lg overflow-hidden cursor-pointer group flex-shrink-0 w-36"
+      className="relative bg-gray-800 rounded-lg overflow-hidden cursor-pointer group flex-shrink-0 w-48"
     >
       {coverUrl ? (
         <img
           src={coverUrl}
           alt={game.title}
-          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-200"
+          className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-200"
         />
       ) : (
         <div className="w-full h-48 bg-gray-700 flex items-center justify-center">
@@ -63,6 +63,31 @@ function ShelfCard({ item, onClick }) {
 function PlatformCarousel({ platform, items, onSelectItem }) {
   const config = PLATFORM_LABELS[platform] || { label: platform, color: 'from-gray-800 to-gray-600' }
 
+  const carouselRef = useRef(null)
+  useEffect(() => {
+    const el = carouselRef.current
+    if (!el) return
+
+  const handleWheel = (e) => {
+    const el = carouselRef.current
+    const atStart = el.scrollLeft <= 0
+    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1
+
+    if ((atStart && e.deltaY < 0) || (atEnd && e.deltaY > 0)) {
+      return  // don't preventDefault, let page scroll naturally
+    }
+
+    e.preventDefault()
+    el.scrollBy({
+      left: e.deltaY * .25,
+      behavior: 'instant'
+    })
+  }
+
+    el.addEventListener('wheel', handleWheel, { passive: false })
+    return () => el.removeEventListener('wheel', handleWheel)
+  }, [])
+
   const stats = {
     completed: items.filter(i => i.status === 'completed').length,
     playing: items.filter(i => i.status === 'playing').length,
@@ -87,7 +112,11 @@ function PlatformCarousel({ platform, items, onSelectItem }) {
       </div>
 
       {/* Carousel */}
-      <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide">
+      <div
+          ref={carouselRef}
+          className="flex gap-3 overflow-x-auto pb-3 scrollbar-hide"
+        >
+
         {items.map(item => (
           <ShelfCard
             key={item.id}

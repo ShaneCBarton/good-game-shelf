@@ -176,19 +176,13 @@ function IGDBGameModal({ game, onClose, session }) {
           />
         </div>
 
-        <div className="flex gap-3">
+        <div>
           <button
             onClick={handleSave}
             disabled={loading || saved}
             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded transition-colors disabled:opacity-50"
           >
             {saved ? '✅ Saved!' : loading ? 'Saving...' : isOnShelf ? 'Update Shelf' : 'Add to Shelf'}
-          </button>
-          <button
-            onClick={onClose}
-            className="px-6 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
-          >
-            Cancel
           </button>
         </div>
       </div>
