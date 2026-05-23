@@ -14,7 +14,7 @@ const normalizePlatform = (platforms) => {
 
 function IGDBGameModal({ game, onClose, session }) {
   const [status, setStatus] = useState('want_to_play')
-  const [rating, setRating] = useState(5)
+  const [rating, setRating] = useState(null)
   const [review, setReview] = useState('')
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -168,28 +168,40 @@ function IGDBGameModal({ game, onClose, session }) {
           </div>
         </div>
 
-        <div className="mb-4">
-          <label className="text-gray-400 text-sm mb-2 block">Rating: {rating}/10</label>
-          <input
-            type="range"
-            min="1"
-            max="10"
-            value={rating}
-            onChange={e => setRating(parseInt(e.target.value))}
-            className="w-full accent-blue-500"
-          />
-        </div>
+        {(status === 'completed' || status === 'dropped') && (
+          <div className="mb-4">
+            <label className="text-gray-400 text-sm mb-2 block">Rating</label>
+            <div className="flex gap-3">
+              {[1, 2, 3].map(star => (
+                <button
+                  key={star}
+                  onClick={() => setRating(rating === star ? null : star)}
+                  className="text-3xl transition-transform hover:scale-110"
+                >
+                  {rating >= star ? '⭐' : '☆'}
+                </button>
+              ))}
+              {rating && (
+                <span className="text-gray-500 text-sm self-center ml-2">
+                  {rating === 1 ? 'Not for me' : rating === 2 ? 'Pretty good' : 'Loved it'}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
-        <div className="mb-6">
-          <label className="text-gray-400 text-sm mb-2 block">Review</label>
-          <textarea
-            value={review}
-            onChange={e => setReview(e.target.value)}
-            placeholder="What did you think?"
-            rows={3}
-            className="w-full bg-gray-700 text-white rounded p-3 outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-          />
-        </div>
+        {(status === 'completed' || status === 'dropped') && (
+          <div className="mb-6">
+            <label className="text-gray-400 text-sm mb-2 block">Review</label>
+            <textarea
+              value={review}
+              onChange={e => setReview(e.target.value)}
+              placeholder="What did you think?"
+              rows={3}
+              className="w-full bg-gray-700 text-white rounded p-3 outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+          </div>
+        )}
 
         <div>
           <button

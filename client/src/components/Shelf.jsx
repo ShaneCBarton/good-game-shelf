@@ -44,11 +44,10 @@ function ShelfCard({ item, onClick }) {
         </span>
       </div>
 
-      {/* Rating badge */}
       {item.rating && (
         <div className="absolute top-2 right-2">
-          <span className="bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-full">
-            {item.rating}/10
+          <span className="bg-black bg-opacity-70 text-yellow-400 text-xs px-2 py-1 rounded-full">
+            {'⭐'.repeat(item.rating)}
           </span>
         </div>
       )}
