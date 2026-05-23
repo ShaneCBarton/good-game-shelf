@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import supabase from '../lib/supabase'
 
-const PLATFORMS = ['steam', 'playstation', 'xbox', 'nintendo', 'pc', 'other']
+const PLATFORMS = ['steam', 'playstation', 'xbox', 'nintendo']
 
 const normalizePlatform = (platforms) => {
   if (!platforms || platforms.length === 0) return 'steam'
@@ -12,7 +12,7 @@ const normalizePlatform = (platforms) => {
   return 'steam'
 }
 
-function IGDBGameModal({ game, onClose, session }) {
+function IGDBGameModal({ game, onClose, session, hoursPlayed }) {
   const [status, setStatus] = useState('want_to_play')
   const [rating, setRating] = useState(null)
   const [review, setReview] = useState('')
@@ -49,7 +49,7 @@ function IGDBGameModal({ game, onClose, session }) {
 
       if (shelfRow) {
         setStatus(shelfRow.status)
-        setRating(shelfRow.rating || 5)
+        setRating(shelfRow.rating && shelfRow.rating <= 3 ? shelfRow.rating : null)
         setReview(shelfRow.review || '')
         setIsOnShelf(true)
       }
@@ -126,6 +126,9 @@ function IGDBGameModal({ game, onClose, session }) {
             {genres && <p className="text-blue-400 text-xs mt-1">{genres}</p>}
             {isOnShelf && (
               <span className="text-green-400 text-xs mt-1 block">✅ Already on your shelf</span>
+            )}
+            {hoursPlayed > 0 && (
+              <p className="text-gray-400 text-xs mt-1">{hoursPlayed} hrs on Steam</p>
             )}
           </div>
         </div>
