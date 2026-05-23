@@ -5,6 +5,7 @@ import IGDBGameModal from './components/IGDBGameModal'
 import SearchBar from './components/SearchBar'
 import Shelf from './components/Shelf'
 import Auth from './components/Auth'
+import SteamImport from './components/SteamImport'
 import supabase from './lib/supabase'
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
   const [selectedIGDBGame, setSelectedIGDBGame] = useState(null)
   const [selectedShelfItem, setSelectedShelfItem] = useState(null)
   const [view, setView] = useState('shelf')
+  const [showSteamImport, setShowSteamImport] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -70,6 +72,12 @@ function App() {
           }`}
         >
           My Shelf
+        </button>
+        <button
+          onClick={() => setShowSteamImport(true)}
+          className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-800 text-gray-400 hover:bg-gray-700 transition-colors"
+        >
+          Import Steam
         </button>
         <button
           onClick={() => setView('library')}
@@ -137,6 +145,17 @@ function App() {
           }}
           session={session}
           onClose={() => setSelectedShelfItem(null)}
+        />
+      )}
+
+      {showSteamImport && (
+        <SteamImport
+          session={session}
+          onClose={() => setShowSteamImport(false)}
+          onImportComplete={() => {
+            setShowSteamImport(false)
+            setView('shelf')
+          }}
         />
       )}
     </div>

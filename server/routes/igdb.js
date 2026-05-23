@@ -64,4 +64,61 @@ router.post('/search', async (req, res) => {
   }
 })
 
+router.post('/match', async (req, res) => {
+  try {
+    const { name, steamAppId } = req.body
+    const token = await getTwitchToken()
+
+    const response = await axios.post(
+      'https://api.igdb.com/v4/games',
+      `search "${name}";
+       fields name, cover.url, genres.name, release_dates.y,
+              platforms.name, summary, rating;
+       limit 5;`,
+      {
+        headers: {
+          'Client-ID': process.env.TWITCH_CLIENT_ID,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'text/plain'
+        }
+      }
+    )
+
+    const results = response.data
+    if (!results || results.length === 0) {
+      return res.json({ matched: false, steamAppId, name })
+    }
+
+    // Score each result — exact name match wins, otherwise take first
+    const normalize = str => str.toLowerCase().replace(/[^a-z0-9]/g, '')
+    const normalizedName = normalize(name)
+
+    const scored = results.map(game => ({
+      ...game,
+      score: normalize(game.name) === normalizedName ? 100 : 0
+    }))
+
+    scored.sort((a, b) => b.score - a.score)
+    const best = scored[0]
+
+    res.json({
+      matched: true,
+      steamAppId,
+      originalName: name,
+      igdbGame: {
+        id: best.id,
+        name: best.name,
+        cover_url: best.cover?.url?.replace('t_thumb', 't_cover_big') || null,
+        genre: best.genres?.map(g => g.name).join(', ') || null,
+        release_year: best.release_dates?.[0]?.y || null,
+        summary: best.summary || null,
+        rating: best.rating || null
+      }
+    })
+  } catch (error) {
+    console.error(error?.response?.data || error.message)
+    res.status(500).json({ error: 'Failed to match game' })
+  }
+})
+
 export default router
