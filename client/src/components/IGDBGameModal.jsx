@@ -1,17 +1,15 @@
 import { useState, useEffect } from 'react'
 import supabase from '../lib/supabase'
 
+const PLATFORMS = ['steam', 'playstation', 'xbox', 'nintendo', 'pc', 'other']
+
 const normalizePlatform = (platforms) => {
-  if (!platforms || platforms.length === 0) return 'unknown'
-  
+  if (!platforms || platforms.length === 0) return 'steam'
   const names = platforms.map(p => p.name.toLowerCase()).join(' ')
-  
   if (names.includes('playstation')) return 'playstation'
   if (names.includes('xbox')) return 'xbox'
-  if (names.includes('nintendo') || names.includes('switch') || names.includes('wii')) return 'nintendo'
-  if (names.includes('pc') || names.includes('windows') || names.includes('mac') || names.includes('linux')) return 'steam'
-  
-  return 'unknown'
+  if (names.includes('nintendo') || names.includes('switch')) return 'nintendo'
+  return 'steam'
 }
 
 function IGDBGameModal({ game, onClose, session }) {
@@ -21,6 +19,8 @@ function IGDBGameModal({ game, onClose, session }) {
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
   const [isOnShelf, setIsOnShelf] = useState(false)
+  const [platform, setPlatform] = useState(
+    game.platforms?.[0]?.name ? normalizePlatform(game.platforms) : 'steam')
 
   const coverUrl = game.cover?.url
     ? game.cover.url.replace('t_thumb', 't_cover_big')
@@ -69,7 +69,7 @@ function IGDBGameModal({ game, onClose, session }) {
       cover_url: coverUrl,
       genre: genres,
       release_year: releaseYear,
-      platform: normalizePlatform(game.platforms)  // ← changed
+      platform: platform  // ← use selected platform
     }, { onConflict: 'igdb_id' })
     .select('id')
     .single()
@@ -133,8 +133,23 @@ function IGDBGameModal({ game, onClose, session }) {
         {game.summary && (
           <p className="text-gray-400 text-sm mb-4 line-clamp-3">{game.summary}</p>
         )}
-
         <div className="mb-4">
+          <label className="text-gray-400 text-sm mb-2 block">Platform</label>
+          <div className="grid grid-cols-3 gap-2">
+            {PLATFORMS.map(p => (
+              <button
+                key={p}
+                onClick={() => setPlatform(p)}
+                className={`py-2 rounded text-sm font-medium capitalize transition-colors ${
+                  platform === p
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+          </div>
           <label className="text-gray-400 text-sm mb-2 block">Status</label>
           <div className="grid grid-cols-2 gap-2">
             {['playing', 'completed', 'dropped', 'want_to_play'].map(s => (
