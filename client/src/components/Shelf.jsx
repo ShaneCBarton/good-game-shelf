@@ -44,13 +44,15 @@ function ShelfCard({ item, onClick }) {
         </span>
       </div>
 
-      {item.rating && (
-        <div className="absolute top-2 right-2">
-          <span className="bg-black bg-opacity-70 text-yellow-400 text-xs px-2 py-1 rounded-full">
-            {'⭐'.repeat(item.rating)}
-          </span>
-        </div>
-      )}
+      <div className="absolute top-2 right-2">
+        <span className="bg-black bg-opacity-70 text-xs px-2 py-1 rounded-full">
+          {[1, 2, 3].map(star => (
+            <span key={star} style={{ color: item.rating >= star ? '#facc15' : '#6b7280' }}>
+              ★
+            </span>
+          ))}
+        </span>
+      </div>
 
       <div className="p-2">
         <p className="text-white text-xs font-medium truncate">{game.title}</p>
