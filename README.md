@@ -1,19 +1,38 @@
 # 🎮 Good Game Shelf
 
-A full-stack game tracking web app — like Goodreads, but for games. Pull your Steam library automatically, search any game via IGDB, and keep your entire collection in one place with personal reviews, ratings, and completion tracking.
+A game tracking web app built for players who want a beautiful, unified home for their entire collection — across Steam, PlayStation, Xbox, and Nintendo.
 
-The UI is built around a **passport and stamp** concept — each platform is a passport booklet, each game is a stamp. Completed games are fully inked, dropped games are cancelled, playing games are in-progress. Your profile is your passport.
+Think Goodreads, but for games. Your shelf is your passport.
+
+---
+
+## The Concept
+
+Every platform is a **passport booklet**. Every game is a **stamp**.
+
+- Completed games are fully inked
+- Dropped games are cancelled
+- Playing games are in-progress
+- Backlog games are unissued
+- 100% Steam achievements earn a **gold stamp**
+- PSN Platinum trophies earn a **platinum stamp**
+
+Your profile is your passport — a living record of every world you've explored.
+
+---
 
 ## Features
 
-- 🔗 Steam library sync — your full library imported automatically
-- 🔍 IGDB search — find and add any game across all platforms
-- 📚 Unified shelf — all your games in one place, organized by platform
-- 🎮 Platform carousels — Steam, PlayStation, Xbox, Nintendo each get their own section
-- ✅ Status tracking — Playing, Completed, Dropped, Want to Play
-- ⭐ Reviews and ratings — leave scores and notes per game
-- 👤 User auth — email/password via Supabase (Google + Discord OAuth coming soon)
-- 🗃️ Per-user data — full Row Level Security, every shelf is private by default
+- **Steam import** — match your entire Steam library to IGDB automatically
+- **Cross-platform search** — find and add any game via IGDB
+- **Platform carousels** — Steam, PlayStation, Xbox, and Nintendo each get their own booklet
+- **Status tracking** — Playing, Completed, Dropped, Want to Play
+- **3-star ratings** — simple, honest ratings for completed and dropped games only
+- **Reviews** — leave personal notes on games you've finished or abandoned
+- **Per-user shelves** — full Row Level Security, every collection is private by default
+- **Google + Discord OAuth** — coming soon
+
+---
 
 ## Tech Stack
 
@@ -21,130 +40,85 @@ The UI is built around a **passport and stamp** concept — each platform is a p
 |---|---|
 | Frontend | React + Vite + Tailwind CSS |
 | Backend | Node.js + Express |
-| Database | PostgreSQL (Supabase) |
+| Database | PostgreSQL via Supabase |
 | Auth | Supabase Auth |
 | Game Metadata | IGDB API (via Twitch) |
-| Steam Library | Steam Web API |
+| Steam Data | Steam Web API |
+| Deployment | Railway (coming soon) |
 
-## Project Structure
+---
+
+## Architecture
 
 ```
-game-tracker/
-├── client/                  # React frontend (Vite)
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Auth.jsx
-│   │   │   ├── GameCard.jsx
-│   │   │   ├── GameModal.jsx
-│   │   │   ├── IGDBGameModal.jsx
-│   │   │   ├── SearchBar.jsx
-│   │   │   └── Shelf.jsx
-│   │   ├── lib/
-│   │   │   └── supabase.js
-│   │   └── App.jsx
-└── server/                  # Node.js + Express API
-    ├── routes/
-    │   ├── steam.js         # Steam library endpoint
-    │   ├── igdb.js          # IGDB search endpoint
-    │   └── shelf.js         # User shelf endpoint
-    └── index.js
+client/                  # React frontend
+  src/
+    components/
+      Auth.jsx           # Email + OAuth login
+      IGDBGameModal.jsx  # Unified game modal
+      SearchBar.jsx      # Debounced IGDB search
+      Shelf.jsx          # Platform carousels + stamp grid
+      SteamImport.jsx    # Bulk Steam → IGDB import flow
+    lib/
+      supabase.js        # Supabase client
+    App.jsx
+
+server/                  # Node.js + Express API
+  routes/
+    steam.js             # Steam library + import endpoints
+    igdb.js              # IGDB search + game matching
+    shelf.js             # Authenticated shelf data
+  index.js
 ```
+
+---
 
 ## Database Schema
 
 ```
-profiles       — user accounts (linked to Supabase auth)
-games          — game metadata cache (Steam + IGDB)
-shelf_games    — user ↔ game link with status, rating, review
+profiles      — user accounts, linked to Supabase auth
+games         — IGDB game metadata cache (cover, genre, release year, time to beat)
+shelf_games   — user ↔ game relationship
+                  status, rating, review,
+                  source_platform, source_platform_id,
+                  hours_played, achievement data
 ```
 
-## Getting Started
+---
 
-### Prerequisites
+## How the Steam Import Works
 
-- Node.js v22+
-- A [Supabase](https://supabase.com) project
-- [Steam API Key](https://steamcommunity.com/dev/apikey)
-- [Twitch Developer credentials](https://dev.twitch.tv/console) (for IGDB)
+1. Fetch the user's full Steam library via the Steam Web API
+2. For each game, POST to `/api/igdb/match` — searches IGDB by name and scores results for best match
+3. Matched games are upserted into the `games` table under their IGDB identity
+4. The original `steam_appid` is preserved as `source_platform_id` so achievement data can still be fetched later
+5. Games land on the shelf as **Want to Play** — the user stamps them from there
 
-### Installation
-
-1. Clone the repo
-   ```
-   git clone https://github.com/yourusername/game-tracker.git
-   cd game-tracker
-   ```
-
-2. Install server dependencies
-   ```
-   cd server
-   npm install
-   ```
-
-3. Install client dependencies
-   ```
-   cd ../client
-   npm install
-   ```
-
-4. Create `server/.env`
-   ```
-   STEAM_API_KEY=your_steam_api_key
-   STEAM_ID=your_steamid64
-   TWITCH_CLIENT_ID=your_twitch_client_id
-   TWITCH_CLIENT_SECRET=your_twitch_client_secret
-   SUPABASE_URL=your_supabase_project_url
-   SUPABASE_ANON_KEY=your_supabase_anon_key
-   SUPABASE_SERVICE_KEY=your_supabase_service_role_key
-   PORT=3001
-   ```
-
-5. Create `client/.env`
-   ```
-   VITE_SUPABASE_URL=your_supabase_project_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-
-6. Start the server
-   ```
-   cd server
-   node --env-file=.env index.js
-   ```
-
-7. Start the client (separate terminal)
-   ```
-   cd client
-   npm run dev
-   ```
-
-## API Routes
-
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/health` | Server health check |
-| GET | `/api/steam/library` | Fetch Steam game library |
-| POST | `/api/igdb/search` | Search games via IGDB |
-| GET | `/api/shelf` | Fetch authenticated user's shelf |
+---
 
 ## Roadmap
 
-- [x] Express server + REST API
-- [x] Steam library sync
-- [x] IGDB search + metadata
-- [x] Supabase database schema with RLS
+- [x] Steam library import with IGDB matching
+- [x] IGDB search — add any game across all platforms
+- [x] Supabase database with Row Level Security
 - [x] User authentication
-- [x] Game shelf with status, reviews, ratings
-- [x] Platform carousels on shelf view
-- [x] Cross-platform game add via IGDB search
+- [x] Platform carousels with status stats
+- [x] Unified game modal with platform selector
+- [x] 3-star rating system (completed + dropped only)
+- [x] Debounced search with live results
 - [ ] Steam achievement sync
-- [ ] Game detail page
-- [ ] PSN trophy data (via psn-api)
+- [ ] Passport + stamp UI design pass
+- [ ] Gold stamps for 100% achievements
+- [ ] Platinum stamps for PSN trophies
+- [ ] Game detail page with time-to-beat comparison
+- [ ] PSN trophy import via psn-api
 - [ ] Xbox integration
 - [ ] Google + Discord OAuth
-- [ ] Passport + stamp UI design pass
-- [ ] Shareable profile/passport card
+- [ ] Shareable passport profile card
 - [ ] Landing page
 - [ ] Deploy to Railway
+
+---
 
 ## License
 
