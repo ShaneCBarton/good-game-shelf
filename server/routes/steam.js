@@ -1,39 +1,46 @@
 import express from 'express'
 import axios from 'axios'
+import { createClient } from '@supabase/supabase-js'
 
 const router = express.Router()
 
 const STEAM_API_KEY = process.env.STEAM_API_KEY
-const STEAM_ID = process.env.STEAM_ID
 
-router.get('/library', async (requestAnimationFrame, res) => {
-    try {
-        const response = await axios.get(
-            'https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/', {
-                params: {
-                    key: STEAM_API_KEY,
-                    steamid: STEAM_ID,
-                    include_appinfo: true, 
-                    include_played_free_games: true,
-                    format: 'json'
-                }
-            }
-        )
-        res.json(response.data.response)
-    } catch (error) {
-        console.error(error)
-        res.status(500).json({ error: 'Failed to fetch Steam library' })
-    }
-})
+const supabaseAuth = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+)
+
+const supabaseService = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+)
 
 router.get('/import', async (req, res) => {
   try {
+    const authHeader = req.headers.authorization
+    if (!authHeader) return res.status(401).json({ error: 'Unauthorized' })
+
+    const token = authHeader.replace('Bearer ', '')
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token)
+    if (authError || !user) return res.status(401).json({ error: 'Unauthorized' })
+
+    const { data: profile } = await supabaseService
+      .from('profiles')
+      .select('steam_id')
+      .eq('id', user.id)
+      .single()
+
+    if (!profile?.steam_id) {
+      return res.status(400).json({ error: 'No Steam ID connected to this account' })
+    }
+
     const response = await axios.get(
       'https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/',
       {
         params: {
           key: STEAM_API_KEY,
-          steamid: STEAM_ID,
+          steamid: profile.steam_id,
           include_appinfo: true,
           include_played_free_games: true,
           format: 'json'
@@ -42,7 +49,6 @@ router.get('/import', async (req, res) => {
     )
 
     const games = response.data.response.games || []
-      
     const sorted = games
       .filter(g => g.name)
       .sort((a, b) => b.playtime_forever - a.playtime_forever)
@@ -60,7 +66,44 @@ router.get('/import', async (req, res) => {
     })
   } catch (error) {
     console.error(error)
-    res.status(500).json({ error: 'Failed to fetch Steam library for import' })
+    res.status(500).json({ error: 'Failed to fetch Steam library' })
+  }
+})
+
+router.get('/resolve/:username', async (req, res) => {
+  try {
+    const { username } = req.params
+
+    const cleaned = username
+      .replace('https://steamcommunity.com/id/', '')
+      .replace('https://steamcommunity.com/profiles/', '')
+      .replace(/\/$/, '')
+      .trim()
+
+    if (/^\d{17}$/.test(cleaned)) {
+      return res.json({ steamId: cleaned })
+    }
+
+    const response = await axios.get(
+      'https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/',
+      {
+        params: {
+          key: STEAM_API_KEY,
+          vanityurl: cleaned
+        }
+      }
+    )
+
+    const { success, steamid } = response.data.response
+
+    if (success === 1) {
+      res.json({ steamId: steamid })
+    } else {
+      res.status(404).json({ error: 'Steam user not found' })
+    }
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Failed to resolve Steam username' })
   }
 })
 
