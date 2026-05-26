@@ -13,6 +13,7 @@ function App() {
   const [view, setView] = useState('shelf')
   const [showSteamImport, setShowSteamImport] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
+  const [shelfKey, setShelfKey] = useState(0)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -78,6 +79,7 @@ function App() {
 
       {view === 'shelf' && (
         <Shelf
+          key={shelfKey}
           session={session}
           onEditGame={handleSelectShelfItem}
         />
@@ -88,7 +90,10 @@ function App() {
           game={selectedGame}
           session={session}
           hoursPlayed={selectedGame.hoursPlayed}
-          onClose={() => setSelectedGame(null)}
+          onClose={() => {
+            setSelectedGame(null)
+            setShelfKey(prev => prev + 1)
+          }}
         />
       )}
 

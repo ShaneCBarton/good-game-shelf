@@ -61,41 +61,64 @@ function IGDBGameModal({ game, onClose, session, hoursPlayed }) {
   const handleSave = async () => {
     setLoading(true)
 
-  const { data: gameData, error: gameError } = await supabase
-    .from('games')
-    .upsert({
-      igdb_id: game.id,
-      title: game.name,
-      cover_url: coverUrl,
-      genre: genres,
-      release_year: releaseYear,
-      platform: platform  // ← use selected platform
-    }, { onConflict: 'igdb_id' })
-    .select('id')
-    .single()
+    const { data: gameData, error: gameError } = await supabase
+      .from('games')
+      .upsert({
+        igdb_id: game.id,
+        title: game.name,
+        cover_url: coverUrl,
+        genre: genres,
+        release_year: releaseYear,
+        platform: platform  // ← use selected platform
+      }, { onConflict: 'igdb_id' })
+      .select('id')
+      .single()
 
-    if (gameError) {
-      console.error('Game upsert error:', gameError)
+      if (gameError) {
+        console.error('Game upsert error:', gameError)
+        setLoading(false)
+        return
+      }
+
+      const { error: shelfError } = await supabase
+        .from('shelf_games')
+        .upsert({
+          user_id: session.user.id,
+          game_id: gameData.id,
+          status,
+          rating,
+          review
+        }, { onConflict: 'user_id,game_id' })
+
+        if (shelfError) {
+          console.error('Shelf upsert error:', shelfError)
+        } else {
+          onClose()
+        }
+      setLoading(false)
+    }
+
+  const handleDelete = async () => {
+    setLoading(true)
+
+    const { data: gameRow } = await supabase
+      .from('games')
+      .select('id')
+      .eq('igdb_id', game.id)
+      .maybeSingle()
+
+    if (!gameRow) {
       setLoading(false)
       return
     }
 
-    const { error: shelfError } = await supabase
+    await supabase
       .from('shelf_games')
-      .upsert({
-        user_id: session.user.id,
-        game_id: gameData.id,
-        status,
-        rating,
-        review
-      }, { onConflict: 'user_id,game_id' })
+      .delete()
+      .eq('user_id', session.user.id)
+      .eq('game_id', gameRow.id)
 
-    if (shelfError) {
-      console.error('Shelf upsert error:', shelfError)
-    } else {
-      setSaved(true)
-    }
-    setLoading(false)
+      onClose()
   }
 
   return (
@@ -206,14 +229,23 @@ function IGDBGameModal({ game, onClose, session, hoursPlayed }) {
           </div>
         )}
 
-        <div>
+        <div className="flex flex-col gap-2">
           <button
             onClick={handleSave}
-            disabled={loading || saved}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded transition-colors disabled:opacity-50"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded transition-colors disabled:opacity-50"
           >
-            {saved ? '✅ Saved!' : loading ? 'Saving...' : isOnShelf ? 'Update Shelf' : 'Add to Shelf'}
+            {loading ? 'Saving...' : isOnShelf ? 'Update Shelf' : 'Add to Shelf'}
           </button>
+            {isOnShelf && (
+              <button
+                onClick={handleDelete}
+                disabled={loading}
+                className="w-full bg-red-900 hover:bg-red-800 text-red-400 hover:text-red-300 text-sm py-2 rounded transition-colors disabled:opacity-50"
+              >
+                Remove from shelf
+              </button>
+            )}
         </div>
       </div>
     </div>
