@@ -25,13 +25,22 @@ router.get('/import', async (req, res) => {
     const { data: { user }, error: authError } = await supabaseAuth.auth.getUser(token)
     if (authError || !user) return res.status(401).json({ error: 'Unauthorized' })
 
-    const { data: profile } = await supabaseService
-      .from('profiles')
-      .select('steam_id')
-      .eq('id', user.id)
-      .single()
+    // Use Steam ID from header if provided, otherwise look up from profile
+    const steamId = req.headers['x-steam-id'] || null
 
-    if (!profile?.steam_id) {
+    let resolvedSteamId = steamId
+
+    if (!resolvedSteamId) {
+      const { data: profile } = await supabaseService
+        .from('profiles')
+        .select('steam_id')
+        .eq('id', user.id)
+        .single()
+
+      resolvedSteamId = profile?.steam_id
+    }
+
+    if (!resolvedSteamId) {
       return res.status(400).json({ error: 'No Steam ID connected to this account' })
     }
 
@@ -40,7 +49,7 @@ router.get('/import', async (req, res) => {
       {
         params: {
           key: STEAM_API_KEY,
-          steamid: profile.steam_id,
+          steamid: resolvedSteamId,
           include_appinfo: true,
           include_played_free_games: true,
           format: 'json'

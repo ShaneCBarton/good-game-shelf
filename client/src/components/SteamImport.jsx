@@ -2,18 +2,64 @@ import { useState } from 'react'
 import supabase from '../lib/supabase'
 
 function SteamImport({ session, onClose, onImportComplete }) {
-  const [step, setStep] = useState('idle') // idle, loading, preview, importing, done
+  const [step, setStep] = useState('connect') // connect, loading, preview, importing, done
+  const [steamInput, setSteamInput] = useState('')
+  const [steamId, setSteamId] = useState(null)
   const [games, setGames] = useState([])
   const [selected, setSelected] = useState(new Set())
   const [progress, setProgress] = useState({ current: 0, total: 0 })
   const [failed, setFailed] = useState([])
+  const [error, setError] = useState(null)
+  const [resolving, setResolving] = useState(false)
 
-  const fetchLibrary = async () => {
+  const handleResolve = async () => {
+    if (!steamInput.trim()) return
+    setResolving(true)
+    setError(null)
+
+    try {
+      const response = await fetch(
+        `http://localhost:3001/api/steam/resolve/${encodeURIComponent(steamInput.trim())}`
+      )
+      const data = await response.json()
+
+      if (!response.ok || data.error) {
+        setError('Steam profile not found. Check your username or URL and try again.')
+        setResolving(false)
+        return
+      }
+
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ steam_id: data.steamId })
+      .eq('id', session.user.id)
+
+    console.log('Steam ID resolved:', data.steamId)
+    console.log('User ID:', session.user.id)
+    console.log('Update error:', JSON.stringify(updateError))
+
+    setSteamId(data.steamId)
+    await fetchLibrary(data.steamId)
+    } catch (err) {
+      setError('Something went wrong. Please try again.')
+    }
+
+    setResolving(false)
+  }
+
+  const fetchLibrary = async (resolvedSteamId) => {
     setStep('loading')
-    const response = await fetch('http://localhost:3001/api/steam/import')
+    const { data: { session: currentSession } } = await supabase.auth.getSession()
+
+    const response = await fetch('http://localhost:3001/api/steam/import', {
+      headers: {
+        Authorization: `Bearer ${currentSession.access_token}`,
+        'X-Steam-Id': resolvedSteamId  // ← pass it directly
+      }
+    })
+
     const data = await response.json()
     setGames(data.games || [])
-    // Pre-select all games
     setSelected(new Set(data.games.map(g => g.steamAppId)))
     setStep('preview')
   }
@@ -47,7 +93,6 @@ function SteamImport({ session, onClose, onImportComplete }) {
       setProgress({ current: i + 1, total: toImport.length })
 
       try {
-        // Match to IGDB
         const matchRes = await fetch('http://localhost:3001/api/igdb/match', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -62,7 +107,6 @@ function SteamImport({ session, onClose, onImportComplete }) {
 
         const ig = match.igdbGame
 
-        // Upsert into games table
         const { data: gameRow, error: gameError } = await supabase
           .from('games')
           .upsert({
@@ -82,7 +126,6 @@ function SteamImport({ session, onClose, onImportComplete }) {
           continue
         }
 
-        // Upsert into shelf_games as backlog
         await supabase
           .from('shelf_games')
           .upsert({
@@ -98,7 +141,6 @@ function SteamImport({ session, onClose, onImportComplete }) {
         setFailed(prev => [...prev, game.name])
       }
 
-      // Small delay to avoid hammering IGDB rate limit
       await new Promise(r => setTimeout(r, 250))
     }
 
@@ -109,34 +151,48 @@ function SteamImport({ session, onClose, onImportComplete }) {
   return (
     <div
       className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
-      onClick={step === 'idle' ? onClose : undefined}
+      onClick={step === 'connect' ? onClose : undefined}
     >
       <div
         className="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-2xl max-h-[80vh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="p-6 border-b border-gray-700">
           <h2 className="text-white text-xl font-bold">Import Steam Library</h2>
           <p className="text-gray-400 text-sm mt-1">
-            Match your Steam games to IGDB and add them to your shelf
+            Connect your Steam account to import your library
           </p>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
 
-          {step === 'idle' && (
-            <div className="text-center py-8">
-              <p className="text-gray-400 mb-6">
-                This will fetch your Steam library, match each game to IGDB,
-                and add them to your backlog. You can then update their status from your shelf.
+          {step === 'connect' && (
+            <div>
+              <p className="text-gray-400 text-sm mb-6">
+                Enter your Steam username or profile URL. Your profile must be set to public in Steam privacy settings.
               </p>
+              <label className="text-gray-400 text-sm mb-2 block">Steam username or profile URL</label>
+              <input
+                type="text"
+                value={steamInput}
+                onChange={e => setSteamInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleResolve()}
+                placeholder="e.g. shanegaming or steamcommunity.com/id/shanegaming"
+                className="w-full bg-gray-700 text-white rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+              />
+              {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
               <button
-                onClick={fetchLibrary}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-lg transition-colors"
+                onClick={handleResolve}
+                disabled={resolving || !steamInput.trim()}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors disabled:opacity-50"
               >
-                Fetch Steam Library
+                {resolving ? 'Looking up Steam profile...' : 'Connect Steam'}
+              </button>
+              <button
+                onClick={onClose}
+                className="w-full text-gray-500 hover:text-gray-400 text-sm py-3 transition-colors"
+              >
+                Cancel
               </button>
             </div>
           )}
@@ -214,9 +270,7 @@ function SteamImport({ session, onClose, onImportComplete }) {
 
           {step === 'done' && (
             <div className="text-center py-8">
-              <p className="text-green-400 text-xl mb-2">
-                ✅ Import complete!
-              </p>
+              <p className="text-green-400 text-xl mb-2">✅ Import complete!</p>
               <p className="text-gray-400 text-sm mb-2">
                 {progress.total - failed.length} games added to your shelf
               </p>
@@ -235,7 +289,6 @@ function SteamImport({ session, onClose, onImportComplete }) {
           )}
         </div>
 
-        {/* Footer */}
         {step === 'preview' && (
           <div className="p-6 border-t border-gray-700">
             <button

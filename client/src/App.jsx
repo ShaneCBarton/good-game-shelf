@@ -23,7 +23,7 @@ function App() {
 
     return () => subscription.unsubscribe()
   }, [])
-
+  
   if (!session) return <Auth />
 
   const handleSelectShelfItem = (item) => {
