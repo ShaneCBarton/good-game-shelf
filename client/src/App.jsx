@@ -5,12 +5,14 @@ import Shelf from './components/Shelf'
 import Auth from './components/Auth'
 import SteamImport from './components/SteamImport'
 import supabase from './lib/supabase'
+import Landing from './components/Landing'
 
 function App() {
   const [session, setSession] = useState(null)
   const [selectedGame, setSelectedGame] = useState(null)
   const [view, setView] = useState('shelf')
   const [showSteamImport, setShowSteamImport] = useState(false)
+  const [showAuth, setShowAuth] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -23,8 +25,11 @@ function App() {
 
     return () => subscription.unsubscribe()
   }, [])
-  
-  if (!session) return <Auth />
+
+  if (!session) {
+    if (showAuth) return <Auth />
+    return <Landing onSignIn={() => setShowAuth(true)} />
+  }
 
   const handleSelectShelfItem = (item) => {
     setSelectedGame({

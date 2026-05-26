@@ -185,9 +185,14 @@ function Shelf({ session, onEditGame }) {
   )
 
   if (shelfItems.length === 0) return (
-    <div className="flex flex-col items-center justify-center h-64 gap-4">
-      <p className="text-gray-400 text-xl">Your shelf is empty</p>
-      <p className="text-gray-500 text-sm">Search for a game above to get started</p>
+    <div className="flex flex-col items-center justify-center h-64 gap-6 text-center">
+      <div className="text-6xl">🎮</div>
+      <div>
+        <p className="text-white text-2xl font-bold mb-2">Your shelf is empty</p>
+        <p className="text-gray-400 text-sm max-w-md">
+          Import your Steam library to get started, or search for any game using the search bar above.
+        </p>
+      </div>
     </div>
   )
 
