@@ -19,6 +19,11 @@ function IGDBGameModal({ game, onClose, session, hoursPlayed }) {
   const [loading, setLoading] = useState(false)
   const [saved, setSaved] = useState(false)
   const [isOnShelf, setIsOnShelf] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [shelfGameId, setShelfGameId] = useState(null)
+  const [achievementCount, setAchievementCount] = useState(null)
+  const [achievementTotal, setAchievementTotal] = useState(null)
+  const [steamAppId, setSteamAppId] = useState(null)
   const [platform, setPlatform] = useState(
     game.platforms?.[0]?.name ? normalizePlatform(game.platforms) : 'steam')
 
@@ -34,11 +39,13 @@ function IGDBGameModal({ game, onClose, session, hoursPlayed }) {
     const fetchExisting = async () => {
       const { data: gameRow } = await supabase
         .from('games')
-        .select('id')
+        .select('id, steam_appid')
         .eq('igdb_id', game.id)
         .maybeSingle()
 
       if (!gameRow) return
+
+      setSteamAppId(gameRow.steam_appid)
 
       const { data: shelfRow } = await supabase
         .from('shelf_games')
@@ -52,6 +59,9 @@ function IGDBGameModal({ game, onClose, session, hoursPlayed }) {
         setRating(shelfRow.rating && shelfRow.rating <= 3 ? shelfRow.rating : null)
         setReview(shelfRow.review || '')
         setIsOnShelf(true)
+        setShelfGameId(shelfRow.id)
+        setAchievementCount(shelfRow.achievement_count)
+        setAchievementTotal(shelfRow.achievement_total)
       }
     }
 
@@ -69,7 +79,7 @@ function IGDBGameModal({ game, onClose, session, hoursPlayed }) {
         cover_url: coverUrl,
         genre: genres,
         release_year: releaseYear,
-        platform: platform  // ← use selected platform
+        platform: platform
       }, { onConflict: 'igdb_id' })
       .select('id')
       .single()
@@ -118,7 +128,45 @@ function IGDBGameModal({ game, onClose, session, hoursPlayed }) {
       .eq('user_id', session.user.id)
       .eq('game_id', gameRow.id)
 
-      onClose()
+    onClose()
+  }
+
+  const syncAchievements = async () => {
+    if (!steamAppId || !shelfGameId) return
+    setSyncing(true)
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('steam_id')
+        .eq('id', session.user.id)
+        .single()
+
+      console.log('profile:', profile)
+      console.log('steamAppId:', steamAppId)
+
+      const url = `${import.meta.env.VITE_API_URL}/api/steam/achievements/${steamAppId}?steamId=${profile.steam_id}`
+      console.log('fetching url:', url)
+
+      const res = await fetch(url)
+      const data = await res.json()
+      console.log('achievement data:', data)
+
+      const { count, total } = data
+
+      await supabase
+        .from('shelf_games')
+        .update({ achievement_count: count, achievement_total: total })
+        .eq('id', shelfGameId)
+
+      setAchievementCount(count)
+      setAchievementTotal(total)
+
+    } catch (err) {
+      console.error('Achievement sync error:', err)
+    } finally {
+      setSyncing(false)
+    }
   }
 
   return (
@@ -237,6 +285,17 @@ function IGDBGameModal({ game, onClose, session, hoursPlayed }) {
           >
             {loading ? 'Saving...' : isOnShelf ? 'Update Shelf' : 'Add to Shelf'}
           </button>
+            {isOnShelf && steamAppId && (
+              <button
+                onClick={syncAchievements}
+                disabled={syncing}
+                className="w-full bg-gray-700 hover:bg-gray-600 text-gray-300 text-sm py-2 rounded transition-colors disabled:opacity-50"
+              >
+                {syncing ? 'Syncing...' : achievementCount !== null
+                  ? `Achievements: ${achievementCount}/${achievementTotal} — Sync`
+                  : 'Sync Achievements'}
+              </button>
+            )}
             {isOnShelf && (
               <button
                 onClick={handleDelete}
@@ -250,6 +309,7 @@ function IGDBGameModal({ game, onClose, session, hoursPlayed }) {
       </div>
     </div>
   )
+
 }
 
 export default IGDBGameModal
