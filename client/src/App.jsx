@@ -47,7 +47,7 @@ function App() {
       <div className="flex justify-between items-center mb-8 gap-4">
         <div>
           <h1 className="text-white text-4xl font-bold">🎮 Good Game Shelf</h1>
-          <p className="text-gray-400 mt-1">{session.user.email}</p>
+          <p className="text-gray-400 mt-1">{session.user.username}</p>
         </div>
         <SearchBar onSelectGame={(game) => setSelectedGame(game)} />
         <button

@@ -116,4 +116,30 @@ router.get('/resolve/:username', async (req, res) => {
   }
 })
 
+router.get('/achievements/:appid', async (req, res) => {
+  const { appid } = req.params
+  const { steamId } = req.query
+
+  if (!steamId) return res.status(400).json({ error: 'steamId required' })
+
+  try {
+    const url = `https://api.steampowered.com/ISteamUserStats/GetPlayerAchievements/v1/?key=${process.env.STEAM_API_KEY}&steamid=${steamId}&appid=${appid}`
+    const response = await fetch(url)
+    const data = await response.json()
+
+    if (!data.playerstats?.success) {
+      return res.json({ count: 0, total: 0 })
+    }
+
+    const achievements = data.playerstats.achievements ?? []
+    const total = achievements.length
+    const count = achievements.filter(a => a.achieved === 1).length
+
+    res.json({ count, total })
+  } catch (err) {
+    console.error('Achievement fetch error:', err)
+    res.status(500).json({ error: 'Failed to fetch achievements' })
+  }
+})
+
 export default router
